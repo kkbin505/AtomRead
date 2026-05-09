@@ -14,3 +14,4 @@ commit.md
 /.vscode
 .vscode/settings.json
 *.hprof
+pull_request.md
