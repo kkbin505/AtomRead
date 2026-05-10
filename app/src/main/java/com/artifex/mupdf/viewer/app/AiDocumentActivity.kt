@@ -116,7 +116,12 @@ class AiDocumentActivity : DocumentActivity(), LifecycleOwner, SavedStateRegistr
                     uiState = s,
                     onToggleAiMode = { uiState.toggleAiMode() },
                     onCircleComplete = { handleCircleComplete() },
-                    onSaveNote = { exporter.exportAtomicNote(uiState.flow.value.response) },
+                    onAddNote = { uiState.addNoteToSession() },
+                    onExportSession = {
+                        val pdfName = mDocTitle ?: "Unknown_PDF"
+                        exporter.exportSession(pdfName, s.sessionNotes)
+                        uiState.clearSession()
+                    },
                     onClosePanel = { uiState.closePanel() }
                 )
             }
@@ -177,7 +182,8 @@ data class AiUiData(
     val aiModeEnabled: Boolean = false,
     val isPanelVisible: Boolean = false,
     val isLoading: Boolean = false,
-    val response: String = ""
+    val response: String = "",
+    val sessionNotes: List<String> = emptyList()
 )
 
 class AiUiState {
@@ -195,6 +201,18 @@ class AiUiState {
     fun setError(msg: String) = _flow.update { it.copy(isLoading = false, response = "[Error] $msg") }
     fun finishLoading() = _flow.update { it.copy(isLoading = false) }
     fun closePanel() = _flow.update { it.copy(isPanelVisible = false, response = "") }
+
+    fun addNoteToSession() = _flow.update {
+        if (it.response.isNotEmpty()) {
+            it.copy(
+                sessionNotes = it.sessionNotes + it.response,
+                response = "",
+                isPanelVisible = false
+            )
+        } else it
+    }
+
+    fun clearSession() = _flow.update { it.copy(sessionNotes = emptyList()) }
 }
 
 // ── Composables ───────────────────────────────────────────────────────────────
@@ -204,7 +222,8 @@ fun AiOverlay(
     uiState: AiUiData,
     onToggleAiMode: () -> Unit,
     onCircleComplete: () -> Unit,
-    onSaveNote: () -> Unit,
+    onAddNote: () -> Unit,
+    onExportSession: () -> Unit,
     onClosePanel: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -218,7 +237,9 @@ fun AiOverlay(
             isVisible = uiState.isPanelVisible,
             streamedText = uiState.response,
             isLoading = uiState.isLoading,
-            onSaveNote = onSaveNote,
+            savedCount = uiState.sessionNotes.size,
+            onAddNote = onAddNote,
+            onExportSession = onExportSession,
             onClose = onClosePanel
         )
 

@@ -14,7 +14,7 @@ class OpenAiClient(val apiKey: String) {
 
     companion object {
         // Update this to match your OpenAI model ID exactly
-        const val MODEL = "gpt-4.1-mini"
+        const val MODEL = "gpt-5.4-mini"
         private const val API_URL = "https://api.openai.com/v1/chat/completions"
         private val SYSTEM_PROMPT = """
         Circle content
@@ -128,7 +128,7 @@ class OpenAiClient(val apiKey: String) {
         # Style Rules
         - Atomic: one concept = one note
         - Dense: don't over-explain basics (linear algebra, calculus, basic probability)
-        - LaTeX: $\nabla f(x)$, $\mathbf{x}$, $\mathbf{A}$, $\mathbb{R}^n$
+        - LaTeX: Use $$ ... $$ for display math and $ ... $ for inline math. Never use \[ ... \] or \( ... \). 
         - No filler, no preamble — start directly with output
         - [AI补全] tag: use it in the note too if a definition relies on inferred context
 
@@ -151,7 +151,7 @@ class OpenAiClient(val apiKey: String) {
             .put("model", MODEL)
             .put("messages", messages)
             .put("stream", true)
-            .put("max_completion_tokens", 800)
+            .put("max_completion_tokens", 2048)
             .toString()
             .toRequestBody(jsonMediaType)
 

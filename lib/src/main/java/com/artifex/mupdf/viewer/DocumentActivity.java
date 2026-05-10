@@ -72,7 +72,7 @@ public class DocumentActivity extends Activity
 
 	private final int    OUTLINE_REQUEST=0;
 	protected MuPDFCore    core;
-	private String       mDocTitle;
+	protected String     mDocTitle;
 	private String       mDocKey;
 	protected ReaderView   mDocView;
 	private View         mButtonsView;

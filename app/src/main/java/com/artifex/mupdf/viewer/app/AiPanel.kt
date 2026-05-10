@@ -16,13 +16,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.graphics.Color as AndroidColor
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.viewinterop.AndroidView
+import android.util.Base64
 
 @Composable
 fun AiPanel(
     isVisible: Boolean,
     streamedText: String,
     isLoading: Boolean,
-    onSaveNote: () -> Unit,
+    savedCount: Int,
+    onAddNote: () -> Unit,
+    onExportSession: () -> Unit,
     onClose: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -94,41 +104,66 @@ fun AiPanel(
                         color = Color(0xFFEEEEEE)
                     )
 
-                    // Scrollable AI response
+                    // WebView-based AI response
+                    val webView = remember { mutableStateOf<WebView?>(null) }
+                    
+                    LaunchedEffect(streamedText) {
+                        val encoded = Base64.encodeToString(streamedText.toByteArray(), Base64.NO_WRAP)
+                        webView.value?.evaluateJavascript("updateContent(decodeURIComponent(escape(atob('$encoded'))))", null)
+                    }
+
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
                     ) {
-                        Text(
-                            text = when {
-                                isLoading && streamedText.isEmpty() -> "Analyzing selected text..."
-                                streamedText.isEmpty() -> ""
-                                else -> streamedText
+                        AndroidView(
+                            factory = { context ->
+                                WebView(context).apply {
+                                    webViewClient = WebViewClient()
+                                    settings.javaScriptEnabled = true
+                                    settings.domStorageEnabled = true
+                                    setBackgroundColor(AndroidColor.TRANSPARENT)
+                                    loadUrl("file:///android_asset/katex_renderer.html")
+                                    webView.value = this
+                                }
                             },
-                            fontSize = 14.sp,
-                            lineHeight = 22.sp,
-                            color = if (isLoading && streamedText.isEmpty())
-                                Color(0xFF999999) else Color(0xFF333333)
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
 
-                    // Save button — only after streaming completes
-                    if (!isLoading && streamedText.isNotEmpty()) {
+                    // Session Actions
+                    if (savedCount > 0 || (!isLoading && streamedText.isNotEmpty())) {
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Button(
-                                onClick = onSaveNote,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF1976D2)
-                                ),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Text("Save Atomic Note", fontSize = 13.sp)
+                            if (savedCount > 0) {
+                                Button(
+                                    onClick = onExportSession,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF4CAF50) // Green for finish
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text("Export Session ($savedCount)", fontSize = 13.sp)
+                                }
+                            } else {
+                                Spacer(modifier = Modifier.width(1.dp))
+                            }
+
+                            if (!isLoading && streamedText.isNotEmpty()) {
+                                Button(
+                                    onClick = onAddNote,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF1976D2)
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text("Add to Session", fontSize = 13.sp)
+                                }
                             }
                         }
                     }
