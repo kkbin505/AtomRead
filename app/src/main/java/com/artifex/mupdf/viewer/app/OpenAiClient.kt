@@ -10,12 +10,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 
-class OpenAiClient(val apiKey: String) {
+class OpenAiClient(
+    val apiKey: String,
+    val baseUrl: String = "https://api.openai.com/v1",
+    val model: String = "gpt-4.1-mini"
+) {
 
     companion object {
-        // Update this to match your OpenAI model ID exactly
-        const val MODEL = "gpt-5.4-mini"
-        private const val API_URL = "https://api.openai.com/v1/chat/completions"
         private val SYSTEM_PROMPT = """
         Circle content
             ↓
@@ -76,28 +77,12 @@ class OpenAiClient(val apiKey: String) {
         **核心内容:** Formal explanation with LaTeX. Cover:
         - Precise definition or theorem statement
         - Key mathematical relationships
-        - Connection to things a UCI MEng student knows: optimization, Lyapunov theory, linear algebra, PMP, dynamic programming, convex analysis
+        - Connection to things a master's student in Mechanical Engineering knows: optimization, Lyapunov theory, linear algebra, PMP, dynamic programming, convex analysis
 
         **Pitfalls:** What do people commonly misunderstand about this? (1–2 points)
 
         Language rule: Chinese for intuition and explanation prose, English for math notation and code.
 
-        ## 原子笔记 (Atomic Note for Obsidian)
-
-        One note per distinct concept. If the circled region contains multiple concepts, generate multiple notes back-to-back.
-
-        ---
-        aliases: [<English alias>, <中文 alias>]
-        tags: [<topic>, <subtopic>]
-        date: <today's date MM/DD/YYYY>
-        ---
-
-        # <Concept Name (中文 / English)>
-
-        ## Definition
-        <Precise formal definition with LaTeX. One paragraph.>
-
-        $$<key equation>$$
 
         ## 直觉与理解 (Intuition)
         <2–4 bullets. WHY this is true, physical/geometric meaning. Bilingual. Most important first.>
@@ -144,19 +129,21 @@ class OpenAiClient(val apiKey: String) {
         val messages = JSONArray().apply {
             put(JSONObject().put("role", "system").put("content", SYSTEM_PROMPT))
             put(JSONObject().put("role", "user").put("content",
-                "Please explain and generate an atomic note for:\n\n$pageText"))
+                "Please explain:\n\n$pageText"))
         }
 
+        val apiUrl = if (baseUrl.endsWith("/")) "${baseUrl}chat/completions" else "$baseUrl/chat/completions"
+
         val requestBody = JSONObject()
-            .put("model", MODEL)
+            .put("model", model)
             .put("messages", messages)
             .put("stream", true)
-            .put("max_completion_tokens", 2048)
+            .put("max_completion_tokens", 4096)
             .toString()
             .toRequestBody(jsonMediaType)
 
         val request = Request.Builder()
-            .url(API_URL)
+            .url(apiUrl)
             .header("Authorization", "Bearer $apiKey")
             .header("Content-Type", "application/json")
             .post(requestBody)
@@ -176,18 +163,34 @@ class OpenAiClient(val apiKey: String) {
                 }
                 try {
                     response.body?.source()?.use { source ->
+                        var reasoningStarted = false
                         while (!source.exhausted()) {
                             val line = source.readUtf8Line() ?: break
                             if (!line.startsWith("data: ")) continue
                             val data = line.removePrefix("data: ").trim()
                             if (data == "[DONE]") break
                             try {
-                                val content = JSONObject(data)
+                                val delta = JSONObject(data)
                                     .getJSONArray("choices")
                                     .getJSONObject(0)
                                     .getJSONObject("delta")
-                                    .optString("content", "")
-                                if (content.isNotEmpty()) trySend(content)
+                                
+                                // Handle DeepSeek R1 reasoning_content
+                                if (delta.has("reasoning_content")) {
+                                    if (!reasoningStarted) {
+                                        trySend("> [!NOTE] Reasoning\n> ")
+                                        reasoningStarted = true
+                                    }
+                                    val reasoning = delta.getString("reasoning_content")
+                                    trySend(reasoning.replace("\n", "\n> "))
+                                } else if (delta.has("content")) {
+                                    if (reasoningStarted) {
+                                        trySend("\n\n---\n\n")
+                                        reasoningStarted = false
+                                    }
+                                    val content = delta.getString("content")
+                                    if (content.isNotEmpty()) trySend(content)
+                                }
                             } catch (_: Exception) { }
                         }
                     }

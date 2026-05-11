@@ -116,11 +116,13 @@ class AiDocumentActivity : DocumentActivity(), LifecycleOwner, SavedStateRegistr
                     uiState = s,
                     onToggleAiMode = { uiState.toggleAiMode() },
                     onCircleComplete = { handleCircleComplete() },
-                    onAddNote = { uiState.addNoteToSession() },
+                    onAddNote = { 
+                        // uiState.addNoteToSession() 
+                    },
                     onExportSession = {
-                        val pdfName = mDocTitle ?: "Unknown_PDF"
-                        exporter.exportSession(pdfName, s.sessionNotes)
-                        uiState.clearSession()
+                        // val pdfName = mDocTitle ?: "Unknown_PDF"
+                        // exporter.exportSession(pdfName, s.sessionNotes)
+                        // uiState.clearSession()
                     },
                     onClosePanel = { uiState.closePanel() }
                 )
@@ -150,13 +152,16 @@ class AiDocumentActivity : DocumentActivity(), LifecycleOwner, SavedStateRegistr
             }
 
             val key = SecurePreferences.getApiKey(this@AiDocumentActivity)
+            val model = SecurePreferences.getModel(this@AiDocumentActivity)
+            val baseUrl = SecurePreferences.getBaseUrl(this@AiDocumentActivity)
+
             if (key.isNullOrEmpty()) {
                 uiState.setError("API Key not set. Please set it in the Settings menu (Wrench icon).")
                 return@launch
             }
 
-            if (aiClient == null || aiClient?.apiKey != key) {
-                aiClient = OpenAiClient(key)
+            if (aiClient == null || aiClient?.apiKey != key || aiClient?.model != model || aiClient?.baseUrl != baseUrl) {
+                aiClient = OpenAiClient(key, baseUrl, model)
             }
 
             aiClient!!.explain(pageText)

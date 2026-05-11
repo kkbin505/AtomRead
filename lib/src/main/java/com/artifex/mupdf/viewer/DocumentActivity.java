@@ -27,6 +27,7 @@ import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.method.PasswordTransformationMethod;
+import android.text.InputType;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -41,11 +42,13 @@ import android.view.animation.Animation;
 import android.view.animation.TranslateAnimation;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.RelativeLayout;
+import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -626,7 +629,7 @@ public class DocumentActivity extends Activity
 				refreshItem.setCheckable(true);
 				refreshItem.setChecked(einkRefreshEnabled);
 
-				popup.getMenu().add(0, 3, 0, "Set OpenAI API Key");
+				popup.getMenu().add(0, 3, 0, "AI Settings");
 
 				popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
 					public boolean onMenuItemClick(MenuItem item) {
@@ -642,7 +645,7 @@ public class DocumentActivity extends Activity
 							edit.putBoolean("einkRefreshEnabled", val);
 							mDocView.setEinkRefreshEnabled(val);
 						} else if (item.getItemId() == 3) {
-							showApiKeyDialog();
+							showAiSettingsDialog();
 						}
 						edit.apply();
 						return true;
@@ -949,21 +952,107 @@ public class DocumentActivity extends Activity
 		}
 	}
 
-	private void showApiKeyDialog() {
-		final EditText input = new EditText(this);
-		input.setHint("sk-...");
+	private void showAiSettingsDialog() {
+		ScrollView scrollView = new ScrollView(this);
+		LinearLayout layout = new LinearLayout(this);
+		layout.setOrientation(LinearLayout.VERTICAL);
+		layout.setPadding(60, 40, 60, 40);
+		scrollView.addView(layout);
+
+		TextView keyLabel = new TextView(this);
+		keyLabel.setText("API Key:");
+		layout.addView(keyLabel);
+		final EditText keyInput = new EditText(this);
+		keyInput.setHint("sk-...");
+		keyInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
 		String currentKey = SecurePreferences.INSTANCE.getApiKey(this);
-		if (currentKey != null) input.setText(currentKey);
+		if (currentKey != null) keyInput.setText(currentKey);
+		layout.addView(keyInput);
+
+		TextView urlLabel = new TextView(this);
+		urlLabel.setText("\nBase URL:");
+		layout.addView(urlLabel);
+		final EditText urlInput = new EditText(this);
+		urlInput.setHint("https://api.openai.com/v1");
+		urlInput.setText(SecurePreferences.INSTANCE.getBaseUrl(this));
+		layout.addView(urlInput);
+
+		TextView modelLabel = new TextView(this);
+		modelLabel.setText("\nModel ID:");
+		layout.addView(modelLabel);
+		final EditText modelInput = new EditText(this);
+		modelInput.setHint("gpt-4o, deepseek-chat, etc.");
+		modelInput.setText(SecurePreferences.INSTANCE.getModel(this));
+		layout.addView(modelInput);
+
+		TextView presetLabel = new TextView(this);
+		presetLabel.setText("\nPresets:");
+		layout.addView(presetLabel);
+
+		LinearLayout buttonLayout = new LinearLayout(this);
+		buttonLayout.setOrientation(LinearLayout.HORIZONTAL);
+
+		Button dsChat = new Button(this);
+		dsChat.setText("DeepSeek V3");
+		dsChat.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				urlInput.setText("https://api.deepseek.com");
+				modelInput.setText("deepseek-chat");
+			}
+		});
+		buttonLayout.addView(dsChat);
+
+		Button dsReasoner = new Button(this);
+		dsReasoner.setText("DeepSeek R1");
+		dsReasoner.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				urlInput.setText("https://api.deepseek.com");
+				modelInput.setText("deepseek-reasoner");
+			}
+		});
+		buttonLayout.addView(dsReasoner);
+
+		layout.addView(buttonLayout);
+
+		LinearLayout gptButtonLayout = new LinearLayout(this);
+		gptButtonLayout.setOrientation(LinearLayout.HORIZONTAL);
+
+		Button gpt41 = new Button(this);
+		gpt41.setText("GPT-4.1 Mini");
+		gpt41.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				urlInput.setText("https://api.openai.com/v1");
+				modelInput.setText("gpt-4.1-mini");
+			}
+		});
+		gptButtonLayout.addView(gpt41);
+
+		Button gpt54 = new Button(this);
+		gpt54.setText("GPT-5.4 Mini");
+		gpt54.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				urlInput.setText("https://api.openai.com/v1");
+				modelInput.setText("gpt-5.4-mini");
+			}
+		});
+		gptButtonLayout.addView(gpt54);
+
+		layout.addView(gptButtonLayout);
 
 		new AlertDialog.Builder(this)
-			.setTitle("OpenAI API Key")
-			.setMessage("Your key will be encrypted and stored locally.")
-			.setView(input)
+			.setTitle("AI Assistant Settings")
+			.setView(scrollView)
 			.setPositiveButton("Save", new DialogInterface.OnClickListener() {
 				@Override
 				public void onClick(DialogInterface dialog, int which) {
-					SecurePreferences.INSTANCE.saveApiKey(DocumentActivity.this, input.getText().toString().trim());
-					Toast.makeText(DocumentActivity.this, "API Key saved securely", Toast.LENGTH_SHORT).show();
+					SecurePreferences.INSTANCE.saveApiKey(DocumentActivity.this, keyInput.getText().toString().trim());
+					SecurePreferences.INSTANCE.saveBaseUrl(DocumentActivity.this, urlInput.getText().toString().trim());
+					SecurePreferences.INSTANCE.saveModel(DocumentActivity.this, modelInput.getText().toString().trim());
+					Toast.makeText(DocumentActivity.this, "Settings saved", Toast.LENGTH_SHORT).show();
 				}
 			})
 			.setNegativeButton("Cancel", null)
