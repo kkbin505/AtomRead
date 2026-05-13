@@ -15,3 +15,6 @@ commit.md
 .vscode/settings.json
 *.hprof
 pull_request.md
+/test
+commit_message.md
+multimodal_plan.md

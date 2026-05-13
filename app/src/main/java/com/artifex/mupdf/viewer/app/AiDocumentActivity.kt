@@ -55,7 +55,7 @@ class AiDocumentActivity : DocumentActivity(), LifecycleOwner, SavedStateRegistr
     private val uiState = AiUiState()
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private lateinit var exporter: ObsidianExporter
-    private var aiClient: OpenAiClient? = null
+    private var aiClient: AiClient? = null
 
     // ── Lifecycle callbacks ───────────────────────────────────────────────────
 
@@ -156,12 +156,25 @@ class AiDocumentActivity : DocumentActivity(), LifecycleOwner, SavedStateRegistr
             val baseUrl = SecurePreferences.getBaseUrl(this@AiDocumentActivity)
 
             if (key.isNullOrEmpty()) {
-                uiState.setError("API Key not set. Please set it in the Settings menu (Wrench icon).")
+                val provider = when {
+                    baseUrl.contains("deepseek") || model.contains("deepseek") -> "DeepSeek"
+                    baseUrl.contains("dashscope") || model.contains("qwen") -> "Qwen"
+                    baseUrl.contains("anthropic") || model.contains("claude") -> "Anthropic (Claude)"
+                    baseUrl.contains("googleapis") || model.contains("gemini") -> "Gemini"
+                    else -> "OpenAI"
+                }
+                uiState.setError("$provider API Key not set. Please set it in the AI Settings (Wrench icon).")
                 return@launch
             }
 
             if (aiClient == null || aiClient?.apiKey != key || aiClient?.model != model || aiClient?.baseUrl != baseUrl) {
-                aiClient = OpenAiClient(key, baseUrl, model)
+                // Load prompt from assets
+                val prompt = try {
+                    assets.open("prompts/explain_note.txt").bufferedReader().use { it.readText() }
+                } catch (e: Exception) {
+                    "Please explain the following content:\n\n" // Fallback
+                }
+                aiClient = AiClient(key, baseUrl, model, prompt)
             }
 
             aiClient!!.explain(pageText)
@@ -205,7 +218,9 @@ class AiUiState {
     fun appendChunk(chunk: String) = _flow.update { it.copy(response = it.response + chunk) }
     fun setError(msg: String) = _flow.update { it.copy(isLoading = false, response = "[Error] $msg") }
     fun finishLoading() = _flow.update { it.copy(isLoading = false) }
-    fun closePanel() = _flow.update { it.copy(isPanelVisible = false, response = "") }
+    fun closePanel() = _flow.update { 
+        it.copy(isPanelVisible = false, response = "", aiModeEnabled = false) 
+    }
 
     fun addNoteToSession() = _flow.update {
         if (it.response.isNotEmpty()) {
