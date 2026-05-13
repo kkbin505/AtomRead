@@ -26,6 +26,12 @@
 			android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
 			></activity>
 		<activity
+			android:name=".NoteBrowserActivity"
+			android:exported="false"
+			android:label="Internal Notes"
+			android:theme="@android:style/Theme.Material.Light.NoActionBar"
+			></activity>
+		<activity
 			android:name=".AtomReadActivity"
 			android:exported="true"
 			>

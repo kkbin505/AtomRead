@@ -117,12 +117,15 @@ class AiDocumentActivity : DocumentActivity(), LifecycleOwner, SavedStateRegistr
                     onToggleAiMode = { uiState.toggleAiMode() },
                     onCircleComplete = { handleCircleComplete() },
                     onAddNote = { 
-                        // uiState.addNoteToSession() 
+                        uiState.addNoteToSession() 
                     },
                     onExportSession = {
-                        // val pdfName = mDocTitle ?: "Unknown_PDF"
-                        // exporter.exportSession(pdfName, s.sessionNotes)
-                        // uiState.clearSession()
+                        val pdfName = mDocTitle ?: "Unknown_PDF"
+                        exporter.exportSession(pdfName, s.sessionNotes)
+                        uiState.clearSession()
+                    },
+                    onOpenNotes = {
+                        startActivity(android.content.Intent(this@AiDocumentActivity, NoteBrowserActivity::class.java))
                     },
                     onClosePanel = { uiState.closePanel() }
                 )
@@ -244,6 +247,7 @@ fun AiOverlay(
     onCircleComplete: () -> Unit,
     onAddNote: () -> Unit,
     onExportSession: () -> Unit,
+    onOpenNotes: () -> Unit,
     onClosePanel: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -260,6 +264,7 @@ fun AiOverlay(
             savedCount = uiState.sessionNotes.size,
             onAddNote = onAddNote,
             onExportSession = onExportSession,
+            onOpenNotes = onOpenNotes,
             onClose = onClosePanel
         )
 

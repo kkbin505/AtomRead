@@ -33,6 +33,7 @@ fun AiPanel(
     savedCount: Int,
     onAddNote: () -> Unit,
     onExportSession: () -> Unit,
+    onOpenNotes: () -> Unit,
     onClose: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
@@ -94,6 +95,9 @@ fun AiPanel(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                         }
+                        TextButton(onClick = onOpenNotes) {
+                            Text("My Notes", color = Color(0xFF1976D2), fontSize = 13.sp)
+                        }
                         TextButton(onClick = onClose) {
                             Text("Close", color = Color(0xFF888888), fontSize = 13.sp)
                         }
@@ -117,19 +121,37 @@ fun AiPanel(
                             .weight(1f)
                             .fillMaxWidth()
                     ) {
-                        AndroidView(
-                            factory = { context ->
-                                WebView(context).apply {
-                                    webViewClient = WebViewClient()
-                                    settings.javaScriptEnabled = true
-                                    settings.domStorageEnabled = true
-                                    setBackgroundColor(AndroidColor.TRANSPARENT)
-                                    loadUrl("file:///android_asset/katex_renderer.html")
-                                    webView.value = this
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        Column {
+                            if (savedCount > 0 && !isLoading && streamedText.isEmpty()) {
+                                Text(
+                                    "Current Session Notes:",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Gray,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                // Simple list of session notes (just snippets or counts)
+                                Text(
+                                    "You have $savedCount notes in this session. Click 'Export' to save them as a directory in Obsidian.",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF666666)
+                                )
+                            }
+                            
+                            AndroidView(
+                                factory = { context ->
+                                    WebView(context).apply {
+                                        webViewClient = WebViewClient()
+                                        settings.javaScriptEnabled = true
+                                        settings.domStorageEnabled = true
+                                        setBackgroundColor(AndroidColor.TRANSPARENT)
+                                        loadUrl("file:///android_asset/katex_renderer.html")
+                                        webView.value = this
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
 
                     // Session Actions
