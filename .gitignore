@@ -1,0 +1,15 @@
+/.gradle
+/.idea
+gradle.properties
+local.properties
+/.claude
+/app/build
+/jni
+/lib/build
+/lib
+/test
+multimodal_plan.md
+pull_request.md
+commit_message.md
+commit.md
+java_pid14504.hprof
